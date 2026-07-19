@@ -1,6 +1,6 @@
 <script>
   import '../app.css';
-  import { authSubscribe, signInAnon, doSignOut } from '$lib/firestore/auth';
+  import { authSubscribe, signInAnon, doSignOut, getCurrentUser } from '$lib/firestore/auth';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
@@ -8,6 +8,7 @@
   let user = null;
   let loading = true;
   let menuOpen = false;
+  let authError = null;
 
   const nav = [
     { path: '/', label: 'Dashboard' },
@@ -21,19 +22,31 @@
 
   onMount(() => {
     if (!browser) return;
+    const timeout = setTimeout(() => {
+      loading = false;
+      authError = 'Auth timed out. Data access may be limited.';
+    }, 8000);
+
     const unsub = authSubscribe((u) => {
+      clearTimeout(timeout);
       user = u;
       loading = false;
       if (!u) {
-        signInAnon();
+        signInAnon().catch((err) => {
+          authError = 'Sign-in failed: ' + (err?.message || 'unknown error');
+        });
       }
     });
-    return unsub;
+
+    return () => {
+      clearTimeout(timeout);
+      unsub();
+    };
   });
 
   async function handleSignOut() {
     await doSignOut();
-    signInAnon();
+    signInAnon().catch(() => {});
   }
 
   function closeMenu() {
@@ -41,77 +54,61 @@
   }
 </script>
 
-<main>
-  {#if loading}
-    <div class="loading">
-      <div class="spinner"></div>
-      <p class="muted">Initializing...</p>
+<div class="app">
+  <nav class="navbar">
+    <div class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span>MyStock</span>
     </div>
-  {:else}
-    <div class="app">
-      <nav class="navbar">
-        <div class="nav-brand">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-          </svg>
-          <span>MyStock</span>
-        </div>
-        <div class="nav-links desktop">
-          {#each nav as item}
-            <a class:active={$page.url.pathname === item.path} href={item.path}>{item.label}</a>
-          {/each}
-        </div>
-        <div class="nav-right">
-          <span class="user-id muted mono">{user?.uid?.slice(0, 8)}</span>
-          <button on:click={handleSignOut} class="muted">Sign out</button>
-          <button class="mobile-toggle" on:click={() => menuOpen = !menuOpen}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      </nav>
-
-      {#if menuOpen}
-        <div class="nav-links mobile open">
-          {#each nav as item}
-            <a class:active={$page.url.pathname === item.path} href={item.path} on:click={closeMenu}>{item.label}</a>
-          {/each}
-        </div>
+    <div class="nav-links desktop">
+      {#each nav as item}
+        <a class:active={$page.url.pathname === item.path} href={item.path}>{item.label}</a>
+      {/each}
+    </div>
+    <div class="nav-right">
+      {#if loading}
+        <span class="user-id muted">Connecting...</span>
+      {:else if user}
+        <span class="user-id muted mono">{user.uid.slice(0, 8)}</span>
+        <button on:click={handleSignOut} class="muted">Sign out</button>
+      {:else}
+        <span class="user-id muted">{authError || 'Offline'}</span>
       {/if}
+      <button class="mobile-toggle" on:click={() => menuOpen = !menuOpen}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
 
-      <div class="content">
-        <slot />
-      </div>
+  {#if menuOpen}
+    <div class="nav-links mobile open">
+      {#each nav as item}
+        <a class:active={$page.url.pathname === item.path} href={item.path} on:click={closeMenu}>{item.label}</a>
+      {/each}
     </div>
   {/if}
-</main>
+
+  <div class="content">
+    {#if authError}
+      <div class="auth-banner" style="background: rgba(248,113,113,0.1); border: 1px solid var(--err); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--err);">
+        {authError}
+        <button on:click={() => { authError = null; signInAnon().catch((e) => authError = e.message); } } style="margin-left:8px;font-size:12px;padding:2px 8px;">Retry</button>
+      </div>
+    {/if}
+    <slot />
+  </div>
+</div>
 
 <style>
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    gap: 16px;
-  }
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
   .app {
     min-height: 100vh;
     display: flex;
