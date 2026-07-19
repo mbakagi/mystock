@@ -7,11 +7,11 @@ import {
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FB_API_KEY ?? 'demo-key',
-  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN ?? 'demo.firebaseapp.com',
-  projectId: import.meta.env.VITE_FB_PROJECT_ID ?? 'demo-mystock',
-  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET ?? 'demo.appspot.com',
-  appId: import.meta.env.VITE_FB_APP_ID ?? 'demo-app'
+  apiKey: import.meta.env.VITE_FB_API_KEY ?? 'AIzaSyDBPAF8LeDCfywbFiWSMHeu01inc_uxSk0',
+  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN ?? 'ledger-d57da.firebaseapp.com',
+  projectId: import.meta.env.VITE_FB_PROJECT_ID ?? 'ledger-d57da',
+  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET ?? 'ledger-d57da.firebasestorage.app',
+  appId: import.meta.env.VITE_FB_APP_ID ?? '1:713000868232:web:b979ddfaa854ea80d5023d'
 };
 
 const app = getApps()[0] ?? initializeApp(firebaseConfig);
