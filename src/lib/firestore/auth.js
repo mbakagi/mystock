@@ -20,7 +20,7 @@ export async function signInAnon() {
 
 export async function signInEmail(email) {
   const actionCodeSettings = {
-    url: `${window.location.origin}/auth/callback`,
+    url: `${window.location.origin}${location.pathname.startsWith('/mystock') ? '/mystock' : ''}/auth/callback`,
     handleCodeInApp: true
   };
   await sendSignInLinkToEmail(auth, email, actionCodeSettings);

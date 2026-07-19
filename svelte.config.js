@@ -11,6 +11,9 @@ const config = {
       precompress: false,
       strict: true
     }),
+    paths: {
+      base: '/mystock'
+    },
     prerender: {
       entries: ['*']
     }
