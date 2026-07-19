@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { isEmailLink, confirmEmailLink } from '$lib/firestore/auth';
+  import { base } from '$app/paths';
 
   let status = 'checking';
   let errorMessage = '';
@@ -20,9 +21,9 @@
     try {
       await confirmEmailLink(email, link);
       status = 'success';
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, '', base);
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = base;
       }, 1500);
     } catch (err) {
       status = 'error';
@@ -46,7 +47,7 @@
     <div class="error">
       <span class="tag err">Error</span>
       <p>{errorMessage}</p>
-      <a href="/">Go to Dashboard</a>
+      <a href="{base}/">Go to Dashboard</a>
     </div>
   {/if}
 </div>

@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
+  import { base } from '$app/paths';
 
   let user = null;
   let loading = true;
@@ -67,7 +68,7 @@
     </div>
     <div class="nav-links desktop">
       {#each nav as item}
-        <a class:active={$page.url.pathname === item.path} href={item.path}>{item.label}</a>
+        <a class:active={$page.url.pathname === item.path} href="{base}{item.path}">{item.label}</a>
       {/each}
     </div>
     <div class="nav-right">

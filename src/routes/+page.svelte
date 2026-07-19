@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { fetchAllBins, fetchAllItems, fetchAllAssignments } from '$lib/firestore/data';
+  import { base } from '$app/paths';
 
   let bins = [];
   let items = [];
@@ -52,7 +53,7 @@
     <div class="quick-links">
       <h2>Quick Actions</h2>
       <div class="grid">
-        <a href="/scan" class="card action">
+        <a href="{base}/scan" class="card action">
           <span class="action-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -63,7 +64,7 @@
           </span>
           <span>Scan QR</span>
         </a>
-        <a href="/bins" class="card action">
+        <a href="{base}/bins" class="card action">
           <span class="action-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -73,7 +74,7 @@
           </span>
           <span>Manage Bins</span>
         </a>
-        <a href="/items" class="card action">
+        <a href="{base}/items" class="card action">
           <span class="action-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -85,7 +86,7 @@
           </span>
           <span>Manage Items</span>
         </a>
-        <a href="/count" class="card action">
+        <a href="{base}/count" class="card action">
           <span class="action-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
