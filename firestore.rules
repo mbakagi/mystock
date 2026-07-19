@@ -1,0 +1,186 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════
+// St3s — Firestore Security Rules
+//
+// Auth-gated access for all collections. No timestamp
+// expiration — secured via request.auth checks instead.
+// Validates field types on writes to prevent schema abuse.
+// ═══════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Inventory — proofinv per-bin docs (composite ID: SKU_Rroom_Aaisle_Bbay_Bbin) ──
+    match /inventory/{itemId} {
+      allow read: if request.auth != null
+        && itemId.matches('^[A-Za-z0-9\\-_\\.]+_R[^_]+_A[^_]+_B[^_]+_B[^_]+$');
+
+      allow create: if request.auth != null
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() > 0
+        && request.resource.data.room is string
+        && request.resource.data.room.size() > 0
+        && request.resource.data.aisle is string
+        && request.resource.data.aisle.size() > 0
+        && request.resource.data.bay is string
+        && request.resource.data.bay.size() > 0
+        && request.resource.data.bin is string
+        && request.resource.data.bin.size() > 0
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity >= 0;
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['quantity','updated_at','item_name','sku'])
+        && (!('quantity' in request.resource.data) || request.resource.data.quantity is int);
+
+      allow delete: if request.auth != null;
+    }
+
+    // ── Inventory — existing scalar-aggregated docs (sl_* or random IDs) ──
+    match /inventory/{itemId} {
+      allow read: if request.auth != null
+        && !itemId.matches('^[A-Za-z0-9\\-_\\.]+_R[^_]+_A[^_]+_B[^_]+_B[^_]+$');
+
+      allow create: if request.auth != null
+        && request.resource.data.sku is string
+        && request.resource.data.sku.matches('^[A-Za-z0-9\\-_.]{1,60}$')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.totalStock is int
+        && request.resource.data.totalStock >= 0
+        && request.resource.data.carrierTrigger is int
+        && request.resource.data.carrierTrigger >= 0
+        && request.resource.data.maxCapacity is int
+        && request.resource.data.maxCapacity >= 0
+        && request.resource.data.purchasingTrigger is int
+        && request.resource.data.purchasingTrigger >= 0;
+
+      // Full record update (from main app)
+      allow update: if request.auth != null
+        && request.resource.data.sku is string
+        && request.resource.data.totalStock is int
+        && request.resource.data.totalStock >= 0
+        && request.resource.data.carrierTrigger is int
+        && request.resource.data.carrierTrigger >= 0
+        && request.resource.data.maxCapacity is int
+        && request.resource.data.maxCapacity >= 0
+        && request.resource.data.purchasingTrigger is int
+        && request.resource.data.purchasingTrigger >= 0;
+
+      // Warehouse bin-assignment update (from warehouse-3d view)
+      // Accepts partial merge writes: binCode + derived warehouse fields only
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['binCode','warehouseRoom','warehouseAisle',
+                      'warehouseBay','warehouseBin','warehouseLevel','updatedAt'])
+        && request.resource.data.binCode is string;
+
+      // Cycle-count reconciliation update (MyStock v2 count flow)
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['buildingStock','totalStock','lastCounted',
+                      'lastCountedBy','countStatus','updatedAt'])
+        && request.resource.data.buildingStock is int
+        && request.resource.data.buildingStock >= 0
+        && request.resource.data.totalStock is int
+        && request.resource.data.totalStock >= 0;
+
+      allow delete: if request.auth != null;
+    }
+
+    // ── Locations ──
+    match /locations/{locId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.order is int;
+
+      allow update: if request.auth != null
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 100;
+
+      allow delete: if request.auth != null;
+    }
+
+    // ── Transactions (immutable audit ledger) ──
+    match /transactions/{txId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.itemId is string
+        && request.resource.data.itemId.size() > 0
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() > 0
+        && request.resource.data.qtyOut is int
+        && request.resource.data.qtyOut >= 0
+        && request.resource.data.type is string
+        && request.resource.data.type in ['scan-out', 'transfer', 'adjust'];
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── Discrepancies (proofinv count verification audit) ──
+    match /discrepancies/{discId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.inventory_id is string
+        && request.resource.data.inventory_id.size() > 0
+        && request.resource.data.expected_qty is int
+        && request.resource.data.actual_qty is int
+        && request.resource.data.variance is int
+        && request.resource.data.worker_uid is string;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── Counts (MyStock v2 count session records) ──
+    match /counts/{countId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && request.resource.data.binCode is string;
+      allow update, delete: if false;
+    }
+
+    // ── Warehouse Templates (read-only; admin-write only) ──
+    match /warehouseTemplates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Warehouse Instances (authenticated CRUD with field validation) ──
+    match /warehouseInstances/{instanceId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.templateId is string
+        && request.resource.data.binsOccupied is map
+        && request.resource.data.binsFree is int
+        && request.resource.data.totalBins is int;
+      allow delete: if request.auth != null;
+    }
+
+    // ── User Preferences (owner-only) ──
+    match /userPreferences/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Org Secrets (guest checkout PIN hash) ──
+    // Readable by anyone authenticated (incl. anonymous guest sessions);
+    // write is disabled from the client — seeded via admin tool / console only.
+    match /orgSecrets/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Catch-all deny ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
